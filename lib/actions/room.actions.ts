@@ -78,15 +78,19 @@ export const getDocuments = async (email: string ) => {
 
 export const updateDocumentAccess = async ({ roomId, email, userType, updatedBy }: ShareDocumentParams) => {
   try {
-    const usersAccesses: RoomAccesses = {
-      [email]: getAccessType(userType) as AccessType,
+    // Check if the user exists in the room before updating access
+    const room = await liveblocks.getRoom(roomId); // Fetch room details
+    if (!room.usersAccesses[email]) {
+      return { error: 'User does not exist' }; // Return error message if user doesn't exist
     }
 
-    const room = await liveblocks.updateRoom(roomId, { 
-      usersAccesses
-    })
+    const usersAccesses: RoomAccesses = {
+      [email]: getAccessType(userType) as AccessType,
+    };
 
-    if(room) {
+    const updatedRoom = await liveblocks.updateRoom(roomId, { usersAccesses });
+
+    if (updatedRoom) {
       const notificationId = nanoid();
 
       await liveblocks.triggerInboxNotification({
@@ -98,18 +102,20 @@ export const updateDocumentAccess = async ({ roomId, email, userType, updatedBy 
           title: `You have been granted ${userType} access to the document by ${updatedBy.name}`,
           updatedBy: updatedBy.name,
           avatar: updatedBy.avatar,
-          email: updatedBy.email
+          email: updatedBy.email,
         },
-        roomId
-      })
+        roomId,
+      });
     }
 
     revalidatePath(`/documents/${roomId}`);
-    return parseStringify(room);
+    return { success: parseStringify(updatedRoom) };
   } catch (error) {
     console.log(`Error happened while updating a room access: ${error}`);
+    return { error: 'An unexpected error occurred' };
   }
 }
+
 
 export const removeCollaborator = async ({ roomId, email }: {roomId: string, email: string}) => {
   try {

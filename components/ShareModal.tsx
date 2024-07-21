@@ -25,19 +25,24 @@ const ShareModal = ({ roomId, collaborators, creatorId, currentUserType }: Share
 
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
-
   const [email, setEmail] = useState('');
   const [userType, setUserType] = useState<UserType>('viewer');
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const shareDocumentHandler = async () => {
     setLoading(true);
+    setErrorMessage(null); // Clear previous error messages
 
-    await updateDocumentAccess({ 
-      roomId, 
-      email, 
-      userType: userType as UserType, 
+    const result = await updateDocumentAccess({
+      roomId,
+      email,
+      userType: userType as UserType,
       updatedBy: user.info,
     });
+
+    if (result.error) {
+      setErrorMessage(result.error); // Set error message if any
+    }
 
     setLoading(false);
   }
@@ -85,6 +90,10 @@ const ShareModal = ({ roomId, collaborators, creatorId, currentUserType }: Share
             {loading ? 'Sending...' : 'Invite'}
           </Button>
         </div>
+
+        {errorMessage && (
+          <p className="mt-4 text-red-600">{errorMessage}</p> // Display error message if any
+        )}
 
         <div className="my-2 space-y-2">
           <ul className="flex flex-col">
